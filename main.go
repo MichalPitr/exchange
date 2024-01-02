@@ -1,42 +1,33 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"context"
 	"log"
 	"net"
-	"os"
+
+	pb "github.com/MichalPitr/exchange/protos"
+	"google.golang.org/grpc"
 )
 
-func handleConnection(c net.Conn) {
-	// Parse
+type server struct {
+	pb.UnimplementedOrderServiceServer
+}
 
-	// Add to queue
+func (s *server) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
+	log.Printf("Received: %v", in)
+	// Process the order here
+	return &pb.OrderResponse{Status: "Success", Details: "Order processed"}, nil
 }
 
 func main() {
-	var port int
-	flag.IntVar(&port, "port", 2020, "server port")
-	flag.Parse()
-	if port < 1024 {
-		log.Println("Using reserved port.")
-		os.Exit(1)
-	}
-
-	address := fmt.Sprintf("localhost:%d", port)
-	ln, err := net.Listen("tcp", address)
-	defer ln.Close()
-
+	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Printf("Error creating a server: %v", err)
-		os.Exit(1)
+		log.Fatalf("failed to listen: %v", err)
 	}
-	log.Printf("Starting server on %s\n", address)
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Println(err)
-		}
-		handleConnection(conn)
+	s := grpc.NewServer()
+	pb.RegisterOrderServiceServer(s, &server{})
+	log.Printf("server listening at %v", lis.Addr())
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
 	}
 }

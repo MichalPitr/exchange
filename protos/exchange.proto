@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package exchange;
+option go_package = "github.com/MichalPitr/exchange/protos";
+
+// The order service definition.
+service OrderService {
+  // Sends a new order to the exchange
+  rpc SendOrder (OrderRequest) returns (OrderResponse) {}
+}
+
+// The request message containing the order details.
+message OrderRequest {
+  int32 userId = 1;
+  string type = 2; // BUY or SELL
+  string orderType = 3; // MARKET or LIMIT
+  int32 amount = 4;
+  int64 price = 5; // Ignored for MARKET orders
+}
+
+// The response message containing the result of the order.
+message OrderResponse {
+  string status = 1;
+  string details = 2;
+}
