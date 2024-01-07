@@ -13,12 +13,7 @@ import (
 	"github.com/MichalPitr/exchange/orderbook"
 )
 
-type server struct {
-	pb.UnimplementedOrderServiceServer
-	orderQueue chan orderbook.Order
-}
-
-func (s *server) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
+func (s *engine.Server) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
 	log.Printf("Received: %v", in)
 	resultChan := make(chan orderbook.OrderResult, 1)
 	// Process the order here
@@ -57,23 +52,17 @@ func (s *server) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderR
 	}
 }
 
-func newServer(queueSize int) *server {
-	return &server{
-		orderQueue: make(chan orderbook.Order, queueSize),
-	}
-}
-
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	srv := newServer(32)
+	e := engine.New(32)
 
-	go engine.ProcessOrders(srv.orderQueue)
+	go engine.ProcessOrders(e)
 
-	pb.RegisterOrderServiceServer(s, srv)
+	pb.RegisterOrderServiceServer(s, e)
 
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {

@@ -1,4 +1,4 @@
-package main
+package orderbook
 
 import (
 	"container/heap"
@@ -68,13 +68,15 @@ func (b *Book) Pop() any {
 	return item
 }
 
-func main() {
-	sellBook := &Book{asc: true}
-	buyBook := &Book{asc: false}
+func New(asc bool) *Book {
+	b := &Book{asc: asc}
+	heap.Init(b)
+	return b
+}
 
-	// Initialize both heaps
-	heap.Init(sellBook)
-	heap.Init(buyBook)
+func main() {
+	sellBook := New(true)
+	buyBook := New(false)
 
 	// Example orders
 	orders := []Order{
