@@ -20,7 +20,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.SendOrder(ctx, &pb.OrderRequest{UserId: 1, Type: "BUY", OrderType: "LIMIT", Amount: 10, Price: 10050})
+	r, err := c.SendOrder(ctx, &pb.OrderRequest{UserId: 1, Type: "SELL", OrderType: "LIMIT", Amount: 10, Price: 110})
+	r, err = c.SendOrder(ctx, &pb.OrderRequest{UserId: 1, Type: "BUY", OrderType: "LIMIT", Amount: 10, Price: 200})
+
 	if err != nil {
 		log.Fatalf("could not send order: %v", err)
 	}

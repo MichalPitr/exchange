@@ -3,6 +3,7 @@ package orderbook
 import (
 	"container/heap"
 	"fmt"
+	"log"
 )
 
 type Order struct {
@@ -16,7 +17,7 @@ type Order struct {
 }
 
 type Item struct {
-	order Order
+	Order Order
 
 	// Necessary for heap.interface methods
 	index int
@@ -37,16 +38,16 @@ func (b Book) Len() int { return len(b.orders) }
 func (b Book) Less(i, j int) bool {
 	// Min-heap if asc is true, else max-heap
 	if b.asc {
-		if b.orders[i].order.Price == b.orders[j].order.Price {
-			return b.orders[i].order.Time < b.orders[j].order.Time
+		if b.orders[i].Order.Price == b.orders[j].Order.Price {
+			return b.orders[i].Order.Time < b.orders[j].Order.Time
 		}
-		return b.orders[i].order.Price < b.orders[j].order.Price
+		return b.orders[i].Order.Price < b.orders[j].Order.Price
 	}
 
-	if b.orders[i].order.Price == b.orders[j].order.Price {
-		return b.orders[i].order.Time < b.orders[j].order.Time
+	if b.orders[i].Order.Price == b.orders[j].Order.Price {
+		return b.orders[i].Order.Time < b.orders[j].Order.Time
 	}
-	return b.orders[i].order.Price > b.orders[j].order.Price
+	return b.orders[i].Order.Price > b.orders[j].Order.Price
 }
 
 func (b Book) Swap(i, j int) { b.orders[i], b.orders[j] = b.orders[j], b.orders[i] }
@@ -74,6 +75,14 @@ func New(asc bool) *Book {
 	return b
 }
 
+func (b Book) Peek() (Order, bool) {
+	if b.Len() == 0 {
+		log.Println("Peeking empty orderbook.")
+		return Order{}, false
+	}
+	return b.orders[0].Order, true
+}
+
 func main() {
 	sellBook := New(true)
 	buyBook := New(false)
@@ -83,7 +92,7 @@ func main() {
 		{
 			UserID:     1,
 			Type:       "Limit",
-			OrderType:  "Sell",
+			OrderType:  "SELL",
 			Amount:     10,
 			Price:      100,
 			Time:       1641016800, // Example Unix timestamp
@@ -92,7 +101,7 @@ func main() {
 		{
 			UserID:     2,
 			Type:       "Limit",
-			OrderType:  "Sell",
+			OrderType:  "SELL",
 			Amount:     5,
 			Price:      200,
 			Time:       1641103200, // Example Unix timestamp
@@ -101,7 +110,7 @@ func main() {
 		{
 			UserID:     3,
 			Type:       "Limit",
-			OrderType:  "Sell",
+			OrderType:  "SELL",
 			Amount:     15,
 			Price:      50,
 			Time:       1641189600, // Example Unix timestamp
@@ -110,7 +119,7 @@ func main() {
 		{
 			UserID:     1,
 			Type:       "Limit",
-			OrderType:  "Buy",
+			OrderType:  "BUY",
 			Amount:     10,
 			Price:      100,
 			Time:       1641016800, // Example Unix timestamp
@@ -119,7 +128,7 @@ func main() {
 		{
 			UserID:     2,
 			Type:       "Limit",
-			OrderType:  "Buy",
+			OrderType:  "BUY",
 			Amount:     5,
 			Price:      200,
 			Time:       1641103200, // Example Unix timestamp
@@ -128,7 +137,7 @@ func main() {
 		{
 			UserID:     3,
 			Type:       "Limit",
-			OrderType:  "Buy",
+			OrderType:  "BUY",
 			Amount:     15,
 			Price:      50,
 			Time:       1641189600, // Example Unix timestamp
@@ -138,10 +147,10 @@ func main() {
 
 	// Add items to both heaps
 	for _, order := range orders {
-		if order.OrderType == "Sell" {
-			heap.Push(sellBook, Item{order: order})
+		if order.OrderType == "SELL" {
+			heap.Push(sellBook, Item{Order: order})
 		} else {
-			heap.Push(buyBook, Item{order: order})
+			heap.Push(buyBook, Item{Order: order})
 		}
 	}
 
