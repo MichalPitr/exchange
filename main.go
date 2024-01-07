@@ -9,6 +9,7 @@ import (
 	pb "github.com/MichalPitr/exchange/protos"
 	"google.golang.org/grpc"
 
+	"github.com/MichalPitr/exchange/engine"
 	"github.com/MichalPitr/exchange/orderbook"
 )
 
@@ -40,8 +41,6 @@ func (s *server) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderR
 		return nil, ctx.Err()
 	}
 
-	log.Printf("Enqueued order: %v\n", s.orderQueue)
-
 	var result orderbook.OrderResult
 	select {
 	case result = <-resultChan:
@@ -64,14 +63,6 @@ func newServer(queueSize int) *server {
 	}
 }
 
-func processOrders(queue <-chan orderbook.Order) {
-	for order := range queue {
-		// Process the order
-		log.Printf("Processing order: %v", order)
-		order.ResultChan <- orderbook.OrderResult{Message: "Processed", Success: true}
-	}
-}
-
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
@@ -80,7 +71,7 @@ func main() {
 	s := grpc.NewServer()
 	srv := newServer(32)
 
-	go processOrders(srv.orderQueue)
+	go engine.ProcessOrders(srv.orderQueue)
 
 	pb.RegisterOrderServiceServer(s, srv)
 
