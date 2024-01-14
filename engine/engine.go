@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"container/heap"
 	"context"
 	"log"
 	"time"
@@ -86,11 +87,23 @@ func match(order orderbook.Order, e *Engine) bool {
 	// Check if order can be served by existing orders in the orderbook. Might have to combine multiple existing orders together.
 	log.Printf("Matching order %v\n", order)
 	if order.Type == "BUY" {
-		if top, ok := e.sellBook.Peek(); ok {
-			log.Printf("Top of sellbook: %v", top)
-			if top.Price <= order.Price {
-				log.Printf("Found matching order for %v: %v\nSettlement price: %d", order, top, top.Price)
-				return true
+
+		// TODO: fix issue with popping from heaps not working correctly.
+		remainingAmount := order.Amount
+		for e.sellBook.Len() > 0 && remainingAmount > 0 {
+			if top, ok := e.sellBook.Peek(); ok {
+				log.Printf("Top of sellbook: %v", top)
+				if top.Price <= order.Price {
+					// Can match entire order with top order from the orderbook.
+					if top.Amount >= remainingAmount {
+						log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
+						return true
+					} else {
+						log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
+						remainingAmount -= top.Amount
+						heap.Pop(e.sellBook)
+					}
+				}
 			}
 		}
 	} else if order.Type == "SELL" {
