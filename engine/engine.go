@@ -3,6 +3,7 @@ package engine
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -72,7 +73,13 @@ func ProcessOrders(e *Engine) {
 		log.Printf("Current sellbook: %v\n", e.sellBook)
 
 		log.Printf("Processing order: %v\n", order)
-		if !match(order, e) {
+		if remainder, matches := match(order, e); remainder == 0 {
+			log.Printf("Matched order completely with: %v", matches)
+		} else {
+			if len(matches) > 0 {
+				fmt.Printf("Partially matched ordered with: %v", matches)
+			}
+			order.Amount = remainder // update Amount
 			if order.Type == "BUY" {
 				e.buyBook.Push(orderbook.Item{Order: order})
 			} else {
@@ -83,22 +90,23 @@ func ProcessOrders(e *Engine) {
 	}
 }
 
-func match(order orderbook.Order, e *Engine) bool {
+func match(order orderbook.Order, e *Engine) (int32, []orderbook.Order) {
 	// Check if order can be served by existing orders in the orderbook. Might have to combine multiple existing orders together.
 	log.Printf("Matching order %v\n", order)
 	remainingAmount := order.Amount
+	matches := make([]orderbook.Order, 0)
 	if order.Type == "BUY" {
 		for e.sellBook.Len() > 0 && remainingAmount > 0 {
 			if top, ok := e.sellBook.Peek(); ok {
 				log.Printf("Top of sellbook: %v", *top)
 				if top.Price > order.Price {
-					return false
+					return remainingAmount, matches
 				}
 				if top.Amount > remainingAmount {
 					log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
 					// Top SELL is larger than remaining BUY, so update existing SELL.
 					top.Amount -= remainingAmount
-					return true
+					return 0, matches
 				} else {
 					log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
 					remainingAmount -= top.Amount
@@ -111,12 +119,12 @@ func match(order orderbook.Order, e *Engine) bool {
 			if top, ok := e.buyBook.Peek(); ok {
 				log.Printf("Top of buyBook: %v", *top)
 				if top.Price < order.Price {
-					return false
+					return remainingAmount, matches
 				}
 				if top.Amount > remainingAmount {
 					log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
 					top.Amount -= remainingAmount
-					return true
+					return 0, matches
 				} else {
 					log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
 					remainingAmount -= top.Amount
@@ -125,5 +133,5 @@ func match(order orderbook.Order, e *Engine) bool {
 			}
 		}
 	}
-	return remainingAmount == 0
+	return remainingAmount, matches
 }

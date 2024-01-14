@@ -1,5 +1,2 @@
-- finish matching logic
-    - can match exactly matching orders
-    - Can match partially matching
-    - Can update the remaining order if only partially matched (i.e. limit placed for 100 but can only match 50 immediately)
-    - Can update the remaining order if only partially matched (i.e. limit placed for 100 but can only match 50 immediately)
+- add unmatched remainder of a LIMIT order to orderbook
+- add reporting
