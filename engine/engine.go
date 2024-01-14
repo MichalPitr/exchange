@@ -18,6 +18,14 @@ type Engine struct {
 	buyBook    *orderbook.Book
 }
 
+func New(queueSize int) *Engine {
+	return &Engine{
+		orderQueue: make(chan orderbook.Order, queueSize),
+		sellBook:   orderbook.New(true),
+		buyBook:    orderbook.New(false),
+	}
+}
+
 func (s *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
 	log.Printf("Received: %v", in)
 	resultChan := make(chan orderbook.OrderResult, 1)
@@ -57,14 +65,6 @@ func (s *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderR
 	}
 }
 
-func New(queueSize int) *Engine {
-	return &Engine{
-		orderQueue: make(chan orderbook.Order, queueSize),
-		sellBook:   orderbook.New(true),
-		buyBook:    orderbook.New(false),
-	}
-}
-
 func ProcessOrders(e *Engine) {
 	for order := range e.orderQueue {
 		// Process the order
@@ -73,7 +73,7 @@ func ProcessOrders(e *Engine) {
 
 		log.Printf("Processing order: %v\n", order)
 		if !match(order, e) {
-			if order.OrderType == "BUY" {
+			if order.Type == "BUY" {
 				e.buyBook.Push(orderbook.Item{Order: order})
 			} else {
 				e.sellBook.Push(orderbook.Item{Order: order})
@@ -86,34 +86,44 @@ func ProcessOrders(e *Engine) {
 func match(order orderbook.Order, e *Engine) bool {
 	// Check if order can be served by existing orders in the orderbook. Might have to combine multiple existing orders together.
 	log.Printf("Matching order %v\n", order)
+	remainingAmount := order.Amount
 	if order.Type == "BUY" {
-
-		// TODO: fix issue with popping from heaps not working correctly.
-		remainingAmount := order.Amount
 		for e.sellBook.Len() > 0 && remainingAmount > 0 {
 			if top, ok := e.sellBook.Peek(); ok {
-				log.Printf("Top of sellbook: %v", top)
-				if top.Price <= order.Price {
-					// Can match entire order with top order from the orderbook.
-					if top.Amount >= remainingAmount {
-						log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
-						return true
-					} else {
-						log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
-						remainingAmount -= top.Amount
-						heap.Pop(e.sellBook)
-					}
+				log.Printf("Top of sellbook: %v", *top)
+				if top.Price > order.Price {
+					return false
+				}
+				if top.Amount > remainingAmount {
+					log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
+					// Top SELL is larger than remaining BUY, so update existing SELL.
+					top.Amount -= remainingAmount
+					return true
+				} else {
+					log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
+					remainingAmount -= top.Amount
+					heap.Pop(e.sellBook)
 				}
 			}
 		}
 	} else if order.Type == "SELL" {
-		if top, ok := e.buyBook.Peek(); ok {
-			log.Printf("Top of sellbook: %v", top)
-			if top.Price >= order.Price {
-				log.Printf("Found matching order for %v: %v\nSettlement price: %d", order, top, top.Price)
-				return true
+		for e.buyBook.Len() > 0 && remainingAmount > 0 {
+			if top, ok := e.buyBook.Peek(); ok {
+				log.Printf("Top of buyBook: %v", *top)
+				if top.Price < order.Price {
+					return false
+				}
+				if top.Amount > remainingAmount {
+					log.Printf("Found matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, remainingAmount)
+					top.Amount -= remainingAmount
+					return true
+				} else {
+					log.Printf("Found partial matching order for %v: %v\nSettlement price: %d\nAmount: %d", order, top, top.Price, top.Amount)
+					remainingAmount -= top.Amount
+					heap.Pop(e.buyBook)
+				}
 			}
 		}
 	}
-	return false
+	return remainingAmount == 0
 }

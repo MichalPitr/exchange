@@ -13,8 +13,8 @@ func TestBuyOrderbook(t *testing.T) {
 	orders := []Order{
 		{
 			UserID:     1,
-			Type:       "Limit",
-			OrderType:  "BUY",
+			Type:       "BUY",
+			OrderType:  "LIMIT",
 			Amount:     10,
 			Price:      100,
 			Time:       1641016800, // Example Unix timestamp
@@ -22,8 +22,8 @@ func TestBuyOrderbook(t *testing.T) {
 		},
 		{
 			UserID:     2,
-			Type:       "Limit",
-			OrderType:  "BUY",
+			Type:       "BUY",
+			OrderType:  "LIMIT",
 			Amount:     5,
 			Price:      200,
 			Time:       1641103200, // Example Unix timestamp
@@ -31,8 +31,8 @@ func TestBuyOrderbook(t *testing.T) {
 		},
 		{
 			UserID:     3,
-			Type:       "Limit",
-			OrderType:  "BUY",
+			Type:       "BUY",
+			OrderType:  "LIMIT",
 			Amount:     15,
 			Price:      50,
 			Time:       1641189600, // Example Unix timestamp
@@ -68,8 +68,8 @@ func TestSellOrderbook(t *testing.T) {
 	orders := []Order{
 		{
 			UserID:     1,
-			Type:       "Limit",
-			OrderType:  "SELL",
+			Type:       "SELL",
+			OrderType:  "LIMIT",
 			Amount:     10,
 			Price:      100,
 			Time:       1641016800, // Example Unix timestamp
@@ -77,8 +77,8 @@ func TestSellOrderbook(t *testing.T) {
 		},
 		{
 			UserID:     2,
-			Type:       "Limit",
-			OrderType:  "SELL",
+			Type:       "SELL",
+			OrderType:  "LIMIT",
 			Amount:     5,
 			Price:      200,
 			Time:       1641103200, // Example Unix timestamp
@@ -86,8 +86,8 @@ func TestSellOrderbook(t *testing.T) {
 		},
 		{
 			UserID:     3,
-			Type:       "Limit",
-			OrderType:  "SELL",
+			Type:       "SELL",
+			OrderType:  "LIMIT",
 			Amount:     15,
 			Price:      50,
 			Time:       1641189600, // Example Unix timestamp

@@ -74,10 +74,10 @@ func New(asc bool) *Book {
 	return b
 }
 
-func (b Book) Peek() (Order, bool) {
+func (b Book) Peek() (*Order, bool) {
 	if b.Len() == 0 {
 		log.Println("Peeking empty orderbook.")
-		return Order{}, false
+		return &Order{}, false
 	}
-	return b.orders[0].Order, true
+	return &b.orders[0].Order, true
 }
