@@ -26,7 +26,7 @@ func TestBuyOrderbook(t *testing.T) {
 			OrderType:  "LIMIT",
 			Amount:     5,
 			Price:      200,
-			Time:       1641103200, // Example Unix timestamp
+			Time:       1641016800, // Example Unix timestamp
 			ResultChan: nil,        // Or initialize as appropriate
 		},
 		{
@@ -35,12 +35,21 @@ func TestBuyOrderbook(t *testing.T) {
 			OrderType:  "LIMIT",
 			Amount:     15,
 			Price:      50,
-			Time:       1641189600, // Example Unix timestamp
+			Time:       1641016800, // Example Unix timestamp
+			ResultChan: nil,        // Or initialize as appropriate
+		},
+		{
+			UserID:     4,
+			Type:       "BUY",
+			OrderType:  "LIMIT",
+			Amount:     15,
+			Price:      300,
+			Time:       1641016800, // Example Unix timestamp
 			ResultChan: nil,        // Or initialize as appropriate
 		},
 	}
 
-	expectPrice := []int64{200, 100, 50}
+	expectPrice := []int64{300, 200, 100, 50}
 
 	// Add items to both heaps
 	for _, order := range orders {

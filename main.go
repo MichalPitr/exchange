@@ -16,7 +16,10 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	e := engine.New(32)
+	e, err := engine.New(1000)
+	if err != nil {
+		log.Fatalf("Failed to start engine: %v", err)
+	}
 
 	go engine.ProcessOrders(e)
 

@@ -5,18 +5,23 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/MichalPitr/exchange/orderbook"
+	"github.com/MichalPitr/exchange/reporter"
 
 	pb "github.com/MichalPitr/exchange/protos"
 )
 
 type Engine struct {
 	pb.UnimplementedOrderServiceServer
-	orderQueue  chan orderbook.Order
-	sellBook    *orderbook.Book
-	buyBook     *orderbook.Book
+	orderQueue chan orderbook.Order
+	sellBook   *orderbook.Book
+	buyBook    *orderbook.Book
+	reporter   *reporter.Reporter
+
+	mutex       sync.Mutex
 	nextOrderId uint64
 }
 
@@ -27,21 +32,54 @@ type Match struct {
 	price  int64 // Technically unnecessary as it can be reconstructed from the orders and picking whichever was older but convenient.
 }
 
-func New(queueSize int) *Engine {
+func (m Match) csvFormat() string {
+	return fmt.Sprintf("%d,%d,%d,%d", m.buyId, m.sellId, m.amount, m.price)
+}
+
+func New(queueSize int) (*Engine, error) {
+	reporter, err := reporter.New("trades.log")
+	if err != nil {
+		return nil, err
+	}
 	return &Engine{
 		orderQueue:  make(chan orderbook.Order, queueSize),
 		sellBook:    orderbook.New(true),
 		buyBook:     orderbook.New(false),
 		nextOrderId: 0,
+		reporter:    reporter,
+	}, nil
+}
+
+func (e *Engine) PrintOrderbookStats() {
+	fmt.Printf("buy book size: %d\n", e.buyBook.Len())
+	fmt.Printf("sell book size: %d\n", e.sellBook.Len())
+	top, ok := e.buyBook.Peek()
+	if ok {
+		fmt.Printf("top buy order: %v\n", top)
+	} else {
+		fmt.Println("buy book empty")
+	}
+
+	top, ok = e.sellBook.Peek()
+	if ok {
+		fmt.Printf("top sell order: %v\n", top)
+	} else {
+		fmt.Println("sell book empty")
 	}
 }
 
-func (s *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
-	log.Printf("Received: %v", in)
+func (e *Engine) Close() {
+	e.reporter.Close()
+}
+
+func (e *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderResponse, error) {
+	// log.Printf("Received: %v", in)
 	resultChan := make(chan orderbook.OrderResult, 1)
+
+	e.mutex.Lock()
 	// Process the order here
 	order := orderbook.Order{
-		Id:         s.nextOrderId,
+		Id:         e.nextOrderId,
 		UserID:     in.UserId,
 		Type:       in.Type,
 		OrderType:  in.OrderType,
@@ -50,11 +88,12 @@ func (s *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderR
 		Time:       time.Now().UnixNano(),
 		ResultChan: resultChan,
 	}
-	s.nextOrderId++
+	e.nextOrderId++
+	e.mutex.Unlock()
 
 	// Enqueue the order.
 	select {
-	case s.orderQueue <- order:
+	case e.orderQueue <- order:
 		// Order enqueued successfully
 	case <-ctx.Done():
 		// Handle context cancellation
@@ -86,7 +125,8 @@ func ProcessOrders(e *Engine) {
 
 func processOrder(e *Engine, order orderbook.Order) {
 	log.Printf("Processing order: %v\n", order)
-	if remainder, matches := match(e, order); remainder == 0 {
+	remainder, matches := match(e, order)
+	if remainder == 0 {
 		log.Printf("Fully matched order with: %v", matches)
 	} else {
 		if len(matches) > 0 {
@@ -95,21 +135,27 @@ func processOrder(e *Engine, order orderbook.Order) {
 
 		if order.OrderType == "MARKET" {
 			// Unfilled part of market order does not enter orderbook.
-			return
 		} else if order.OrderType == "LIMIT" {
 			order.Amount = remainder
 			if order.Type == "BUY" {
-				e.buyBook.Push(orderbook.Item{Order: order})
+				heap.Push(e.buyBook, orderbook.Item{Order: order})
 			} else {
-				e.sellBook.Push(orderbook.Item{Order: order})
+				heap.Push(e.sellBook, orderbook.Item{Order: order})
 			}
 		}
 	}
+	for _, m := range matches {
+		e.reporter.Println(m.csvFormat())
+	}
+	e.reporter.Flush()
+	topBuy, _ := e.buyBook.Peek()
+	topSell, _ := e.sellBook.Peek()
+	log.Printf("Buy book size: %d, Top buy: %d\n", e.buyBook.Len(), topBuy.Price)
+	log.Printf("Sell book size: %d, Top sell: %d\n", e.sellBook.Len(), topSell.Price)
 }
 
 func match(e *Engine, order orderbook.Order) (int32, []Match) {
 	// Check if order can be served by existing orders in the orderbook. Might have to combine multiple existing orders together.
-	log.Printf("Matching order %v\n", order)
 	remainingAmount := order.Amount
 	matches := make([]Match, 0)
 	if order.Type == "BUY" {

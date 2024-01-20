@@ -8,7 +8,10 @@ import (
 )
 
 func TestMatchOneBuyTwoSells(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -62,7 +65,10 @@ func TestMatchOneBuyTwoSells(t *testing.T) {
 }
 
 func TestMatchOneBuyPartialSells(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -123,7 +129,10 @@ func TestMatchOneBuyPartialSells(t *testing.T) {
 }
 
 func TestMatchBuyNoMatch(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -165,7 +174,10 @@ func TestMatchBuyNoMatch(t *testing.T) {
 }
 
 func TestMatchOneSellTwoBuys(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -216,7 +228,10 @@ func TestMatchOneSellTwoBuys(t *testing.T) {
 }
 
 func TestProcessLimitOrder(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -259,7 +274,10 @@ func TestProcessLimitOrder(t *testing.T) {
 }
 
 func TestProcessMarketOrder(t *testing.T) {
-	engine := New(32)
+	engine, err := New(32)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
