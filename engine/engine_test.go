@@ -9,7 +9,6 @@ import (
 
 func TestMatchOneBuyTwoSells(t *testing.T) {
 	engine := New(32)
-
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -40,7 +39,6 @@ func TestMatchOneBuyTwoSells(t *testing.T) {
 		},
 	}
 
-	// Add items to both heaps
 	for _, order := range orders {
 		heap.Push(engine.sellBook, orderbook.Item{Order: order})
 	}
@@ -54,15 +52,17 @@ func TestMatchOneBuyTwoSells(t *testing.T) {
 		Time:       1641016800, // Example Unix timestamp
 		ResultChan: nil,        // Or initialize as appropriate
 	}
-
-	if remainder, _ := match(buy, engine); remainder != 0 {
+	remainder, matches := match(engine, buy)
+	if remainder != 0 {
 		t.Errorf("Expected 0 remainder, but got %d", remainder)
+	}
+	if len(matches) != 2 {
+		t.Errorf("Expected 2 matches, but got %d", len(matches))
 	}
 }
 
 func TestMatchOneBuyPartialSells(t *testing.T) {
 	engine := New(32)
-
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -93,7 +93,6 @@ func TestMatchOneBuyPartialSells(t *testing.T) {
 		},
 	}
 
-	// Add items to both heaps
 	for _, order := range orders {
 		heap.Push(engine.sellBook, orderbook.Item{Order: order})
 	}
@@ -108,8 +107,12 @@ func TestMatchOneBuyPartialSells(t *testing.T) {
 		ResultChan: nil,        // Or initialize as appropriate
 	}
 
-	if remainder, _ := match(buy, engine); remainder != 0 {
+	remainder, matches := match(engine, buy)
+	if remainder != 0 {
 		t.Errorf("Expected 0 remainder, but got %d", remainder)
+	}
+	if len(matches) != 2 {
+		t.Errorf("Expected 2 matches, but got %d", len(matches))
 	}
 
 	if order, ok := engine.sellBook.Peek(); ok {
@@ -121,7 +124,6 @@ func TestMatchOneBuyPartialSells(t *testing.T) {
 
 func TestMatchBuyNoMatch(t *testing.T) {
 	engine := New(32)
-
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -134,7 +136,6 @@ func TestMatchBuyNoMatch(t *testing.T) {
 		},
 	}
 
-	// Add items to both heaps
 	for _, order := range orders {
 		heap.Push(engine.sellBook, orderbook.Item{Order: order})
 	}
@@ -148,8 +149,12 @@ func TestMatchBuyNoMatch(t *testing.T) {
 		Time:       1641016800, // Example Unix timestamp
 		ResultChan: nil,        // Or initialize as appropriate
 	}
-	if remainder, _ := match(buy, engine); remainder != 10 {
+	remainder, matches := match(engine, buy)
+	if remainder != 10 {
 		t.Errorf("Expected 10 remainder, but got %d", remainder)
+	}
+	if len(matches) != 0 {
+		t.Errorf("Expected 0 matches, but got %d", len(matches))
 	}
 
 	if order, ok := engine.sellBook.Peek(); ok {
@@ -161,7 +166,6 @@ func TestMatchBuyNoMatch(t *testing.T) {
 
 func TestMatchOneSellTwoBuys(t *testing.T) {
 	engine := New(32)
-
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -192,7 +196,6 @@ func TestMatchOneSellTwoBuys(t *testing.T) {
 		},
 	}
 
-	// Add items to both heaps
 	for _, order := range orders {
 		heap.Push(engine.buyBook, orderbook.Item{Order: order})
 	}
@@ -207,14 +210,13 @@ func TestMatchOneSellTwoBuys(t *testing.T) {
 		ResultChan: nil,        // Or initialize as appropriate
 	}
 
-	if remainder, _ := match(sell, engine); remainder != 0 {
+	if remainder, _ := match(engine, sell); remainder != 0 {
 		t.Error("Expected a match")
 	}
 }
 
-func TestMatchInsufficientDemand(t *testing.T) {
+func TestProcessLimitOrder(t *testing.T) {
 	engine := New(32)
-
 	orders := []orderbook.Order{
 		{
 			UserID:     1,
@@ -227,7 +229,6 @@ func TestMatchInsufficientDemand(t *testing.T) {
 		},
 	}
 
-	// Add items to both heaps
 	for _, order := range orders {
 		heap.Push(engine.buyBook, orderbook.Item{Order: order})
 	}
@@ -240,21 +241,58 @@ func TestMatchInsufficientDemand(t *testing.T) {
 		UserID:     1,
 		Type:       "SELL",
 		OrderType:  "LIMIT",
-		Amount:     20,
-		Price:      150,
+		Amount:     20, // Amount higher than demand in orderbook
+		Price:      100,
 		Time:       1641016800, // Example Unix timestamp
 		ResultChan: nil,        // Or initialize as appropriate
 	}
 
-	if remainder, _ := match(sell, engine); remainder != 10 {
-		t.Errorf("Expected 10 remainder, but got %d", remainder)
-	}
+	processOrder(engine, sell)
+
 	if order, ok := engine.sellBook.Peek(); ok {
 		if order.Amount != 10 {
-			t.Errorf("Expected remainder of order to be 10, but got %d", order.Amount)
+			t.Errorf("Expected 10 units of order to be added to orderbook, instead got %d", order.Amount)
 		}
 	} else {
-		t.Error("Expected remainder of order to be added to sellbook.")
+		t.Error("Expected order to be added to sell orderbook.")
+	}
+}
+
+func TestProcessMarketOrder(t *testing.T) {
+	engine := New(32)
+	orders := []orderbook.Order{
+		{
+			UserID:     1,
+			Type:       "BUY",
+			OrderType:  "LIMIT", // Buy is limit so that it is added to orderbook.
+			Amount:     10,
+			Price:      100,
+			Time:       1641016800, // Example Unix timestamp
+			ResultChan: nil,        // Or initialize as appropriate
+		},
 	}
 
+	for _, order := range orders {
+		heap.Push(engine.buyBook, orderbook.Item{Order: order})
+	}
+
+	if engine.sellBook.Len() != 0 {
+		t.Error("Expected empty sellbook.")
+	}
+
+	sell := orderbook.Order{
+		UserID:     1,
+		Type:       "SELL",
+		OrderType:  "MARKET",
+		Amount:     20, // Amount higher than demand in orderbook
+		Price:      100,
+		Time:       1641016800, // Example Unix timestamp
+		ResultChan: nil,        // Or initialize as appropriate
+	}
+
+	processOrder(engine, sell)
+
+	if order, ok := engine.sellBook.Peek(); ok {
+		t.Errorf("Expected market order to not be added to sell orderbook. %v", order)
+	}
 }

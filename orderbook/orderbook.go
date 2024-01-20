@@ -6,9 +6,10 @@ import (
 )
 
 type Order struct {
+	Id         uint64
 	UserID     int32
-	Type       string
-	OrderType  string
+	Type       string // BUY or SELL
+	OrderType  string // MARKET or LIMIT
 	Amount     int32
 	Price      int64
 	Time       int64
