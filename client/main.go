@@ -29,16 +29,13 @@ func main() {
 	var r *pb.OrderResponse
 	var wg sync.WaitGroup
 	wg.Add(2)
+	t0 := time.Now().UnixMilli()
 	go func() {
 		defer wg.Done()
-		for userID := 1; userID <= 100; userID++ {
+		for userID := 1; userID <= 100000; userID++ {
 			orderType := "LIMIT"
-			// if rand.Intn(2) == 0 {
-			// 	orderType = "MARKET"
-			// }
-
-			// amount := rand.Int31n(100) + 1 // Random amount between 1 and 100
-			amount := int32(10)
+			amount := rand.Int31n(20) + 1 // Random amount between 1 and 100
+			// amount := int32(10)
 			price := rand.Int63n(500) + 1 // Random price between 1 and 500
 
 			r, err = c.SendOrder(ctx, &pb.OrderRequest{
@@ -53,20 +50,19 @@ func main() {
 				// Handle error
 				log.Fatalf("could not send order: %v", err)
 			}
-			time.Sleep(1 * time.Millisecond)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		for userID := 101; userID <= 200; userID++ {
+		for userID := 100001; userID <= 200000; userID++ {
 			orderType := "LIMIT"
 			// if rand.Intn(2) == 0 {
 			// 	orderType = "MARKET"
 			// }
 
-			// amount := rand.Int31n(100) + 1 // Random amount between 1 and 100
-			amount := int32(10)
+			amount := rand.Int31n(20) + 1 // Random amount between 1 and 100
+			// amount := int32(10)
 			price := rand.Int63n(500) + 1 // Random price between 1 and 500
 
 			r, err = c.SendOrder(ctx, &pb.OrderRequest{
@@ -81,10 +77,11 @@ func main() {
 				// Handle error
 				log.Fatalf("could not send order: %v", err)
 			}
-			time.Sleep(1 * time.Millisecond)
 		}
 	}()
 
 	wg.Wait()
+	t1 := time.Now().UnixMilli()
+	log.Printf("Processing took %d milliseconds\n", t1-t0)
 	log.Printf("Response: %s", r.GetStatus())
 }

@@ -51,24 +51,14 @@ func New(queueSize int) (*Engine, error) {
 }
 
 func (e *Engine) PrintOrderbookStats() {
-	fmt.Printf("buy book size: %d\n", e.buyBook.Len())
-	fmt.Printf("sell book size: %d\n", e.sellBook.Len())
-	top, ok := e.buyBook.Peek()
-	if ok {
-		fmt.Printf("top buy order: %v\n", top)
-	} else {
-		fmt.Println("buy book empty")
-	}
-
-	top, ok = e.sellBook.Peek()
-	if ok {
-		fmt.Printf("top sell order: %v\n", top)
-	} else {
-		fmt.Println("sell book empty")
-	}
+	topBuy, _ := e.buyBook.Peek()
+	topSell, _ := e.sellBook.Peek()
+	log.Printf("Buy book size: %d, Top buy: %d\n", e.buyBook.Len(), topBuy.Price)
+	log.Printf("Sell book size: %d, Top sell: %d\n", e.sellBook.Len(), topSell.Price)
 }
 
 func (e *Engine) Close() {
+	e.PrintOrderbookStats()
 	e.reporter.Close()
 }
 
@@ -130,7 +120,7 @@ func processOrder(e *Engine, order orderbook.Order) {
 		log.Printf("Fully matched order with: %v", matches)
 	} else {
 		if len(matches) > 0 {
-			fmt.Printf("Partially matched ordered with: %v", matches)
+			fmt.Printf("Partially matched ordered with: %v\n", matches)
 		}
 
 		if order.OrderType == "MARKET" {
@@ -148,10 +138,6 @@ func processOrder(e *Engine, order orderbook.Order) {
 		e.reporter.Println(m.csvFormat())
 	}
 	e.reporter.Flush()
-	topBuy, _ := e.buyBook.Peek()
-	topSell, _ := e.sellBook.Peek()
-	log.Printf("Buy book size: %d, Top buy: %d\n", e.buyBook.Len(), topBuy.Price)
-	log.Printf("Sell book size: %d, Top sell: %d\n", e.sellBook.Len(), topSell.Price)
 }
 
 func match(e *Engine, order orderbook.Order) (int32, []Match) {
