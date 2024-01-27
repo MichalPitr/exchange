@@ -82,28 +82,11 @@ func (e *Engine) SendOrder(ctx context.Context, in *pb.OrderRequest) (*pb.OrderR
 	e.mutex.Unlock()
 
 	// Enqueue the order.
-	select {
-	case e.orderQueue <- order:
-		// Order enqueued successfully
-	case <-ctx.Done():
-		// Handle context cancellation
-		return nil, ctx.Err()
-	}
+	e.orderQueue <- order
 
-	var result orderbook.OrderResult
-	select {
-	case result = <-resultChan:
-		// Received the processing result
-	case <-ctx.Done():
-		// Handle context cancellation
-		return nil, ctx.Err()
-	}
+	log.Printf("Order queue size: %d\n", len(e.orderQueue))
 
-	if result.Success {
-		return &pb.OrderResponse{Status: "Success", Details: result.Message}, nil
-	} else {
-		return &pb.OrderResponse{Status: "Failed", Details: result.Message}, nil
-	}
+	return &pb.OrderResponse{Status: "Success", Details: fmt.Sprintf("Order %d is getting processed", order.Id)}, nil
 }
 
 func ProcessOrders(e *Engine) {

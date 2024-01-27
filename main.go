@@ -49,7 +49,7 @@ func main() {
 		<-sigChan // Wait for interrupt signal
 		log.Println("Shutting down the server...")
 
-		s.GracefulStop() // Gracefully stop the server
+		s.GracefulStop()
 		e.Close()
 
 		wg.Done()
